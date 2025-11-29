@@ -33,7 +33,11 @@ export interface ServiceOrder {
   id: string;
   processNumber: string;
   priority: Priority;
+  
+  // Team
   technicianName: string;
+  assistantTechnicianName?: string; // New Field
+  
   status: ServiceStatus;
   channel: string; // Phone, Email, Web, etc.
   startDate: string; // ISO String
