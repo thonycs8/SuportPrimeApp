@@ -1,0 +1,7 @@
+{
+  "name": "Suporte Prime",
+  "description": "Sistema de gestão de ordens de serviço, agenda e relatórios técnicos.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
