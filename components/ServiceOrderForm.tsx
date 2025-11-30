@@ -1,15 +1,17 @@
+
 import React, { useState } from 'react';
 import { ServiceOrder, ServiceStatus, Priority, ServiceImage } from '../types';
 import { SignaturePad } from './SignaturePad';
-import { Save, X, Plus, Trash2, Camera, FileText, User, MapPin, Zap, Calendar as CalIcon, Users, PenTool } from 'lucide-react';
+import { Save, X, Plus, Trash2, Camera, FileText, User, MapPin, Zap, Calendar as CalIcon, Users, PenTool, Printer, ChevronLeft } from 'lucide-react';
 
 interface ServiceOrderFormProps {
   order: ServiceOrder;
   onSave: (order: ServiceOrder) => void;
   onCancel: () => void;
+  onPrint?: () => void;
 }
 
-export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({ order: initialOrder, onSave, onCancel }) => {
+export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({ order: initialOrder, onSave, onCancel, onPrint }) => {
   const [order, setOrder] = useState<ServiceOrder>(initialOrder);
   const [activeTab, setActiveTab] = useState<'info' | 'execution' | 'photos' | 'signatures'>('info');
 
@@ -51,80 +53,101 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({ order: initi
   };
 
   const tabs = [
-    { id: 'info', label: 'Dados da Obra', icon: Zap },
-    { id: 'execution', label: 'Relatório Técnico', icon: FileText },
-    { id: 'photos', label: 'Evidências', icon: Camera },
-    { id: 'signatures', label: 'Validação', icon: PenTool },
+    { id: 'info', label: 'Dados', icon: Zap },
+    { id: 'execution', label: 'Relatório', icon: FileText },
+    { id: 'photos', label: 'Fotos', icon: Camera },
+    { id: 'signatures', label: 'Assinar', icon: PenTool },
   ];
 
-  // Estilo comum para inputs cinza claro com texto escuro
-  const inputClass = "w-full rounded bg-slate-50 border-slate-300 border p-2.5 text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 transition-colors font-medium placeholder:text-slate-400";
-  const labelClass = "block text-xs font-bold text-slate-500 uppercase mb-1 tracking-wide";
+  // Mobile First Input Style: White background, Dark Text, Larger touch target
+  const inputClass = "w-full rounded-lg bg-white border border-slate-300 p-3 text-slate-800 shadow-sm focus:bg-white focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all font-medium placeholder:text-slate-400 text-base appearance-none";
+  const labelClass = "block text-xs font-bold text-slate-500 uppercase mb-1.5 tracking-wide";
 
   return (
-    <div className="bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col h-full max-h-[90vh] md:max-h-full">
-      {/* Technical Header */}
-      <div className="bg-slate-900 text-white p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <div className="flex items-center gap-3 mb-1">
-            <h2 className="text-xl font-bold tracking-tight">OS: {order.processNumber}</h2>
-            <span className={`text-xs px-2 py-0.5 rounded uppercase font-bold tracking-wider ${
-              order.priority === Priority.CRITICAL ? 'bg-red-500 text-white' :
-              order.priority === Priority.HIGH ? 'bg-orange-500 text-white' :
-              'bg-blue-500 text-white'
-            }`}>
-              {order.priority}
-            </span>
+    <div className="bg-white md:rounded-xl shadow-none md:shadow-2xl border-none md:border border-slate-200 overflow-hidden flex flex-col h-full md:h-auto min-h-screen md:min-h-0">
+      
+      {/* Mobile Sticky Header */}
+      <div className="sticky top-0 z-30 bg-slate-900 text-white p-4 shadow-md">
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+             <div className="flex items-center gap-3">
+                <button onClick={onCancel} className="md:hidden p-1 -ml-1 text-slate-400 hover:text-white">
+                    <ChevronLeft size={24} />
+                </button>
+                <div>
+                    <h2 className="text-lg font-bold tracking-tight leading-none">OS: {order.processNumber}</h2>
+                    <p className="text-slate-400 text-xs mt-1 flex items-center gap-1">
+                        <Users size={12} /> {order.technicianName.split(' ')[0]}
+                    </p>
+                </div>
+             </div>
+             <div className="flex items-center gap-2">
+                 <span className={`text-[10px] px-2 py-1 rounded-full uppercase font-bold tracking-wider ${
+                  order.priority === Priority.CRITICAL ? 'bg-red-500 text-white' :
+                  order.priority === Priority.HIGH ? 'bg-orange-500 text-white' :
+                  'bg-blue-500 text-white'
+                }`}>
+                  {order.priority}
+                </span>
+             </div>
           </div>
-          <p className="text-slate-400 text-sm flex items-center gap-2">
-            <Users size={14} /> 
-            Resp: {order.technicianName}
-          </p>
-        </div>
-        <div className="flex gap-3">
-           <button
-            onClick={onCancel}
-            className="px-4 py-2 text-slate-300 hover:text-white border border-slate-600 hover:border-slate-400 rounded-lg transition-all flex items-center gap-2"
-          >
-            <X size={18} /> Cancelar
-          </button>
-          <button
-            onClick={() => onSave(order)}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 hover:shadow-lg hover:shadow-blue-900/50 transition-all font-medium flex items-center gap-2"
-          >
-            <Save size={18} /> Guardar
-          </button>
+          
+          {/* Actions Row */}
+          <div className="flex gap-2 justify-end">
+            <button
+                onClick={onCancel}
+                className="hidden md:flex px-3 py-2 text-slate-300 hover:text-white border border-slate-600 hover:border-slate-400 rounded-lg transition-all items-center gap-2 text-sm"
+            >
+                <X size={16} /> Cancelar
+            </button>
+            {onPrint && (
+                <button
+                    onClick={onPrint}
+                    className="flex-1 md:flex-none justify-center px-3 py-2 text-slate-200 bg-slate-800 hover:bg-slate-700 rounded-lg transition-all flex items-center gap-2 text-sm font-medium"
+                >
+                    <Printer size={16} /> <span className="md:inline">PDF</span>
+                </button>
+            )}
+            <button
+                onClick={() => onSave(order)}
+                className="flex-1 md:flex-none justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 hover:shadow-lg hover:shadow-blue-900/50 transition-all font-bold text-sm flex items-center gap-2"
+            >
+                <Save size={18} /> Guardar
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex border-b border-slate-200 bg-slate-50 overflow-x-auto">
-        {tabs.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id as any)}
-            className={`flex items-center gap-2 px-6 py-4 text-sm font-semibold whitespace-nowrap transition-all border-b-2 ${
-              activeTab === tab.id
-                ? 'border-blue-600 text-blue-700 bg-white'
-                : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-100'
-            }`}
-          >
-            <tab.icon size={18} className={activeTab === tab.id ? 'text-blue-600' : 'text-slate-400'} />
-            {tab.label}
-          </button>
-        ))}
+      {/* Scrollable Tabs */}
+      <div className="sticky top-[120px] md:top-0 z-20 bg-slate-50 border-b border-slate-200 overflow-x-auto hide-scrollbar">
+        <div className="flex md:grid md:grid-cols-4 w-full min-w-max md:min-w-0">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`flex-1 flex items-center justify-center gap-2 px-6 py-4 text-sm font-bold whitespace-nowrap transition-all border-b-2 ${
+                activeTab === tab.id
+                  ? 'border-blue-600 text-blue-700 bg-white'
+                  : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              <tab.icon size={18} className={activeTab === tab.id ? 'text-blue-600' : 'text-slate-400'} />
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Content Area */}
-      <div className="p-6 md:p-8 overflow-y-auto flex-1 bg-slate-50/50">
+      <div className="p-4 md:p-8 overflow-y-auto flex-1 bg-slate-100">
         {activeTab === 'info' && (
-          <div className="space-y-8">
+          <div className="space-y-6">
             {/* Equipa Técnica Section */}
-            <section className="bg-white p-6 rounded-lg border border-slate-200 shadow-sm">
-              <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-                <Users size={16} /> Equipa e Planeamento
+            <section className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2 pb-2 border-b border-slate-100">
+                <Users size={14} /> Equipa e Planeamento
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                  <div>
                   <label className={labelClass}>Técnico Responsável</label>
                   <input
@@ -173,23 +196,25 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({ order: initi
                 </div>
                 <div>
                   <label className={labelClass}>Estado Atual</label>
-                  <select
-                    value={order.status}
-                    onChange={(e) => handleChange('status', e.target.value)}
-                    className={inputClass}
-                  >
-                    {Object.values(ServiceStatus).map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
+                  <div className="relative">
+                    <select
+                        value={order.status}
+                        onChange={(e) => handleChange('status', e.target.value)}
+                        className={inputClass}
+                    >
+                        {Object.values(ServiceStatus).map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
                 </div>
               </div>
             </section>
 
             {/* Cliente Section */}
-            <section className="bg-white p-6 rounded-lg border border-slate-200 shadow-sm">
-              <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-                <User size={16} /> Dados do Cliente
+            <section className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2 pb-2 border-b border-slate-100">
+                <User size={14} /> Dados do Cliente
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                   <label className={labelClass}>Nome da Entidade</label>
                   <input
@@ -206,12 +231,13 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({ order: initi
                     value={order.customer.nif}
                     onChange={(e) => handleCustomerChange('nif', e.target.value)}
                     className={inputClass}
+                    inputMode="numeric"
                   />
                 </div>
                  <div className="md:col-span-2">
                   <label className={labelClass}>Local do Serviço</label>
                   <div className="relative">
-                    <MapPin size={18} className="absolute left-3 top-2.5 text-slate-400" />
+                    <MapPin size={18} className="absolute left-3 top-3.5 text-slate-400" />
                     <input
                       type="text"
                       value={order.customer.city}
@@ -225,10 +251,10 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({ order: initi
                   <textarea
                     value={order.customer.address}
                     onChange={(e) => handleCustomerChange('address', e.target.value)}
-                    className={`${inputClass} h-24 resize-none`}
+                    className={`${inputClass} min-h-[100px] resize-y`}
                   />
                 </div>
-                <div className="space-y-4">
+                <div className="space-y-5">
                     <div>
                         <label className={labelClass}>Código Postal</label>
                         <input
@@ -241,7 +267,7 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({ order: initi
                     <div>
                         <label className={labelClass}>Contactos</label>
                         <input
-                            type="text"
+                            type="tel"
                             value={order.customer.contacts}
                             onChange={(e) => handleCustomerChange('contacts', e.target.value)}
                             className={inputClass}
@@ -255,33 +281,33 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({ order: initi
 
         {activeTab === 'execution' && (
           <div className="space-y-6">
-             <div className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
+             <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
                 <label className="block text-sm font-bold text-slate-700 mb-2">Âmbito do Serviço</label>
                 <textarea
                   value={order.scope}
                   onChange={(e) => handleChange('scope', e.target.value)}
-                  className="w-full rounded bg-slate-50 border-slate-300 border p-4 h-24 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm text-slate-900 focus:bg-white transition-colors"
-                  placeholder="Instruções de trabalho..."
+                  className="w-full rounded-lg bg-white border-slate-300 border p-4 h-32 focus:ring-2 focus:ring-blue-500 shadow-sm text-base text-slate-800 transition-colors placeholder:text-slate-400"
+                  placeholder="Descreva o que vai ser feito..."
                 />
             </div>
 
-            <div className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
-                <label className="block text-sm font-bold text-slate-800 mb-2">Relatório Técnico Detalhado</label>
+            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+                <label className="block text-sm font-bold text-slate-700 mb-2">Relatório Técnico Detalhado</label>
                 <textarea
                   value={order.report}
                   onChange={(e) => handleChange('report', e.target.value)}
-                  className="w-full rounded bg-slate-50 border-slate-300 border p-4 h-64 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm leading-relaxed text-slate-900 focus:bg-white transition-colors"
-                  placeholder="Descreva todas as intervenções, medições e peças substituídas..."
+                  className="w-full rounded-lg bg-white border-slate-300 border p-4 h-64 focus:ring-2 focus:ring-blue-500 shadow-sm font-mono text-base leading-relaxed text-slate-800 transition-colors placeholder:text-slate-400"
+                  placeholder="Registo de atividades, medições e materiais..."
                 />
             </div>
 
-            <div className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm">
+            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
                 <label className="block text-sm font-bold text-slate-700 mb-2">Observações / Pendências</label>
                 <textarea
                   value={order.observations}
                   onChange={(e) => handleChange('observations', e.target.value)}
-                  className="w-full rounded bg-slate-50 border-slate-300 border p-4 h-24 text-sm text-slate-900 focus:bg-white transition-colors"
-                  placeholder="Notas importantes para o cliente ou reagendamento..."
+                  className="w-full rounded-lg bg-white border-slate-300 border p-4 h-32 text-base text-slate-800 shadow-sm focus:ring-2 focus:ring-blue-500 transition-colors placeholder:text-slate-400"
+                  placeholder="Notas finais..."
                 />
             </div>
           </div>
@@ -289,31 +315,31 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({ order: initi
 
         {activeTab === 'photos' && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-white p-5 rounded-xl border border-slate-200 shadow-sm gap-4">
               <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">
+                  <div className="p-3 bg-blue-100 text-blue-600 rounded-xl">
                     <Camera size={24} />
                   </div>
                   <div>
                     <h3 className="text-sm font-bold text-slate-800">Registo Fotográfico</h3>
-                    <p className="text-xs text-slate-500">Documentação visual do antes e depois.</p>
+                    <p className="text-xs text-slate-500">Adicione fotos do antes e depois.</p>
                   </div>
               </div>
-              <label className="cursor-pointer px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2 shadow-sm font-medium">
+              <label className="cursor-pointer w-full sm:w-auto text-center px-5 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition flex items-center justify-center gap-2 shadow-sm font-bold active:scale-95">
                 <Plus size={18} />
-                Adicionar Fotos
+                Tirar Foto
                 <input type="file" multiple accept="image/*" className="hidden" onChange={handleImageUpload} />
               </label>
             </div>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {order.images.map((img) => (
-                <div key={img.id} className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden group hover:shadow-lg transition-all">
+                <div key={img.id} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden group">
                   <div className="aspect-video relative bg-slate-100">
                     <img src={img.url} alt={img.name} className="w-full h-full object-cover" />
                     <button 
                       onClick={() => removeImage(img.id)}
-                      className="absolute top-2 right-2 p-2 bg-red-600/90 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm"
+                      className="absolute top-2 right-2 p-2 bg-red-600 text-white rounded-lg shadow-sm hover:bg-red-700 transition-colors"
                       title="Remover foto"
                     >
                       <Trash2 size={16} />
@@ -325,16 +351,16 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({ order: initi
                       type="text"
                       value={img.description}
                       onChange={(e) => updateImageDescription(img.id, e.target.value)}
-                      placeholder="Ex: Quadro elétrico aberto..."
-                      className="w-full text-sm border-b border-slate-200 focus:border-blue-500 focus:outline-none py-1 text-slate-700 bg-transparent"
+                      placeholder="Toque para descrever..."
+                      className="w-full text-sm border-b border-slate-200 focus:border-blue-500 focus:outline-none py-2 text-slate-800 bg-transparent placeholder:text-slate-300"
                     />
                   </div>
                 </div>
               ))}
               {order.images.length === 0 && (
-                  <div className="col-span-full py-16 text-center text-slate-400 border-2 border-dashed border-slate-300 rounded-xl bg-slate-50">
-                      <Camera size={48} className="mx-auto mb-3 opacity-50" />
-                      <p className="font-medium">Nenhuma evidência fotográfica carregada</p>
+                  <div className="col-span-full py-12 text-center text-slate-400 border-2 border-dashed border-slate-300 rounded-xl bg-slate-50">
+                      <Camera size={32} className="mx-auto mb-3 opacity-50" />
+                      <p className="font-medium text-sm">Sem fotos adicionadas</p>
                   </div>
               )}
             </div>
@@ -343,31 +369,31 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({ order: initi
 
         {activeTab === 'signatures' && (
           <div className="space-y-6">
-            <div className="bg-slate-50 border border-slate-200 p-4 rounded-lg flex items-start gap-3">
+            <div className="bg-blue-50 border border-blue-100 p-5 rounded-xl flex items-start gap-3">
                 <div className="mt-1 text-blue-600"><FileText size={20}/></div>
-                <div className="text-sm text-slate-600">
-                    <p className="font-semibold text-slate-800">Termo de Responsabilidade</p>
-                    <p>Ao assinar este documento digital, o cliente confirma a execução dos serviços descritos e a receção dos equipamentos em bom estado, salvo indicação em contrário nas observações.</p>
+                <div className="text-sm text-slate-700">
+                    <p className="font-bold text-slate-900 mb-1">Validação do Serviço</p>
+                    <p className="leading-relaxed text-xs sm:text-sm">Ao assinar, o cliente confirma a execução dos trabalhos e a receção dos equipamentos, salvo indicação nas observações.</p>
                 </div>
             </div>
             
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 pb-10">
+              <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
                  <SignaturePad 
                     label="Técnico Responsável" 
                     onSave={(data) => handleChange('technicianSignature', data)}
                     existingSignature={order.technicianSignature}
                 />
-                <p className="mt-2 text-xs text-slate-400 text-center uppercase tracking-widest">{order.technicianName}</p>
+                <p className="mt-3 text-xs text-slate-400 text-center uppercase tracking-widest font-bold">{order.technicianName}</p>
               </div>
               
-              <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+              <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
                  <SignaturePad 
                     label="Cliente / Responsável" 
                     onSave={(data) => handleChange('customerSignature', data)}
                     existingSignature={order.customerSignature}
                 />
-                <p className="mt-2 text-xs text-slate-400 text-center uppercase tracking-widest">{order.customer.name}</p>
+                <p className="mt-3 text-xs text-slate-400 text-center uppercase tracking-widest font-bold">{order.customer.name}</p>
               </div>
             </div>
           </div>

@@ -1,17 +1,21 @@
+
 import React from 'react';
-import { ViewMode } from '../types';
-import { LayoutDashboard, Calendar, List, Settings, LogOut, Zap } from 'lucide-react';
+import { ViewMode, PlanType, Organization, UserRole } from '../types';
+import { LayoutDashboard, Calendar, List, Zap, ShieldAlert } from 'lucide-react';
 
 interface SidebarProps {
   currentView: ViewMode;
   onChangeView: (view: ViewMode) => void;
+  organization: Organization;
+  userRole?: UserRole;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, organization, userRole }) => {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'list', label: 'Agenda de Serviço', icon: List },
-    { id: 'calendar', label: 'Calendário', icon: Calendar },
+    // Only show Calendar if Plan is NOT Free
+    ...(organization.plan !== PlanType.FREE ? [{ id: 'calendar', label: 'Calendário', icon: Calendar }] : []),
   ];
 
   return (
@@ -28,6 +32,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView }) =
 
       <nav className="flex-1 px-3 py-6 space-y-1">
         <p className="px-4 text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Menu Principal</p>
+        
+        {/* Admin Link */}
+        {userRole === UserRole.SUPER_ADMIN && (
+            <button
+            onClick={() => onChangeView('admin-panel')}
+            className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-bold rounded-lg transition-all duration-200 mb-4 ${
+              currentView === 'admin-panel'
+                ? 'bg-red-900/50 text-red-200 border border-red-800/50'
+                : 'text-red-400 hover:bg-slate-800'
+            }`}
+          >
+            <ShieldAlert size={18} />
+            Super Admin
+          </button>
+        )}
+
         {menuItems.map(item => (
           <button
             key={item.id}
@@ -40,20 +60,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView }) =
           >
             <item.icon size={18} className={`transition-colors ${currentView === item.id || (currentView === 'edit' && item.id === 'list') ? 'text-white' : 'text-slate-500 group-hover:text-white'}`} />
             {item.label}
+             {item.id === 'calendar' && organization.plan === PlanType.FREE && (
+                <span className="ml-auto text-[10px] bg-slate-700 px-1.5 py-0.5 rounded text-slate-300">PRO</span>
+             )}
           </button>
         ))}
       </nav>
 
-      <div className="p-4 border-t border-slate-800">
-        <button className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 w-full transition-colors mb-1">
-          <Settings size={18} />
-          Configurações
-        </button>
-        <button className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-red-400 hover:text-red-300 rounded-lg hover:bg-slate-800 w-full transition-colors">
-          <LogOut size={18} />
-          Terminar Sessão
-        </button>
-      </div>
+      {organization.plan === PlanType.FREE && (
+          <div className="p-4 mx-4 mb-4 bg-slate-800 rounded-xl border border-slate-700">
+            <p className="text-xs text-slate-300 mb-2">Você está no plano <span className="text-white font-bold">Free</span></p>
+            <div className="w-full bg-slate-700 h-1.5 rounded-full mb-1">
+                <div className="bg-amber-500 h-1.5 rounded-full w-full"></div>
+            </div>
+            <p className="text-[10px] text-slate-500">1/1 utilizadores</p>
+          </div>
+      )}
     </aside>
   );
 };

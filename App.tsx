@@ -1,14 +1,35 @@
 import React, { useState, useEffect } from 'react';
-import { ViewMode, ServiceOrder, ServiceStatus, Priority } from './types';
+import { ViewMode, ServiceOrder, ServiceStatus, Priority, User, Organization, UserRole, PlanType, OrganizationStatus, Lead, SupportTicket } from './types';
 import { generateMockData } from './services/mockData';
+import { getInitialData } from './services/mockAuth';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
 import { CalendarView } from './components/CalendarView';
 import { ServiceOrderForm } from './components/ServiceOrderForm';
-import { Search, Filter, Menu, Plus, Users, MapPin, Calendar, Clock, ChevronRight } from 'lucide-react';
+import { ServiceOrderPDF } from './components/ServiceOrderPDF';
+import { OrganizationSettings } from './components/OrganizationSettings';
+import { PublicTracking } from './components/PublicTracking';
+import { AdminDashboard } from './components/AdminDashboard';
+import { TopNavbar } from './components/TopNavbar';
+import { LandingPage } from './components/LandingPage';
+import { OperationalNav } from './components/OperationalNav';
+import { Search, Filter, Users, MapPin, Calendar, ChevronRight, ArrowRight } from 'lucide-react';
 
 const App: React.FC = () => {
-  const [view, setView] = useState<ViewMode>('dashboard');
+  // Global Database State (Lifted Up for Admin Access)
+  const initialData = getInitialData();
+  const [dbUsers, setDbUsers] = useState<User[]>(initialData.users);
+  const [dbOrgs, setDbOrgs] = useState<Organization[]>(initialData.orgs);
+  const [dbLeads, setDbLeads] = useState<Lead[]>(initialData.leads);
+  const [dbTickets, setDbTickets] = useState<SupportTicket[]>(initialData.tickets);
+
+  // Auth State
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentOrg, setCurrentOrg] = useState<Organization | null>(null);
+
+  // App State
+  // Initial View is now Landing Page
+  const [view, setView] = useState<ViewMode>('landing');
   const [orders, setOrders] = useState<ServiceOrder[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<ServiceOrder | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -20,6 +41,80 @@ const App: React.FC = () => {
     setOrders(data);
   }, []);
 
+  const handleLogin = (email: string) => {
+    // Determine user from our "Live" DB
+    const user = dbUsers.find(u => u.email.includes(email));
+    if (user) {
+        const org = dbOrgs.find(o => o.id === user.organizationId);
+        if (org) {
+            // Check for suspension
+            if (org.status === OrganizationStatus.SUSPENDED && user.role !== UserRole.SUPER_ADMIN) {
+                alert(`Acesso suspenso. Motivo: ${org.suspensionReason}. Contacte o suporte.`);
+                return;
+            }
+
+            // Check for Trial Expiration
+            if (org.trialEndsAt) {
+              const trialEnd = new Date(org.trialEndsAt);
+              const now = new Date();
+              if (now > trialEnd && org.plan === PlanType.PRO) { // If Pro (Trial) expired and not yet upgraded/paid
+                  alert("O seu período de teste de 15 dias expirou. Por favor, contacte o administrador para subscrever o plano Pro.");
+                  return;
+              }
+            }
+
+            setCurrentUser(user);
+            setCurrentOrg(org);
+            setView(user.role === UserRole.SUPER_ADMIN ? 'admin-panel' : 'dashboard');
+            return;
+        }
+    }
+    alert("Erro de autenticação simulado");
+  };
+
+  const handleRegister = (data: { name: string; email: string; companyName: string; phone: string; nif: string }) => {
+    // 1. Create Organization with 15 Days Trial
+    const trialEndDate = new Date();
+    trialEndDate.setDate(trialEndDate.getDate() + 15);
+
+    const newOrg: Organization = {
+      id: `org-${Math.random().toString(36).substr(2, 6)}`,
+      name: data.companyName,
+      nif: data.nif,
+      plan: PlanType.PRO, // Start with PRO features
+      status: OrganizationStatus.ACTIVE,
+      maxUsers: 5,
+      activeUsers: 1,
+      joinedAt: new Date().toISOString(),
+      trialEndsAt: trialEndDate.toISOString(), // 15 Days trial
+    };
+
+    // 2. Create Manager User
+    const newUser: User = {
+      id: `u-${Math.random().toString(36).substr(2, 6)}`,
+      name: data.name,
+      email: data.email,
+      role: UserRole.MANAGER,
+      organizationId: newOrg.id
+    };
+
+    // 3. Update DB State
+    setDbOrgs(prev => [...prev, newOrg]);
+    setDbUsers(prev => [...prev, newUser]);
+
+    // 4. Auto Login
+    alert(`Conta criada com sucesso! Aproveite os seus 15 dias de teste até ${trialEndDate.toLocaleDateString('pt-PT')}.`);
+    setCurrentUser(newUser);
+    setCurrentOrg(newOrg);
+    setView('dashboard');
+  };
+
+  const handleLogout = () => {
+      setCurrentUser(null);
+      setCurrentOrg(null);
+      setView('landing'); // Redirect to Landing Page
+  };
+
   const handleEditOrder = (order: ServiceOrder) => {
     setSelectedOrder(order);
     setView('edit');
@@ -28,19 +123,62 @@ const App: React.FC = () => {
   const handleSaveOrder = (updatedOrder: ServiceOrder) => {
     setOrders(prev => prev.map(o => o.id === updatedOrder.id ? updatedOrder : o));
     setSelectedOrder(null);
-    setView('list'); // Return to list view usually better than dashboard
+    setView('list'); 
+  };
+
+  // Organization Updates (Admin or Manager)
+  const handleUpdateOrg = (updatedOrg: Organization) => {
+      setDbOrgs(prev => prev.map(o => o.id === updatedOrg.id ? updatedOrg : o));
+      // If updating current logged in user's org, reflect immediately
+      if (currentOrg?.id === updatedOrg.id) {
+          setCurrentOrg(updatedOrg);
+      }
+  };
+
+  const handleUpdateUser = (updatedUser: User) => {
+      setDbUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
+  };
+
+  const handleDeleteUser = (userId: string) => {
+      if(confirm('Tem a certeza que deseja eliminar este utilizador?')) {
+          setDbUsers(prev => prev.filter(u => u.id !== userId));
+      }
+  };
+
+  // --- CRM & Support Handlers ---
+  const handleUpdateLead = (lead: Lead) => {
+      setDbLeads(prev => prev.map(l => l.id === lead.id ? lead : l));
+  };
+
+  const handleAddLead = (lead: Lead) => {
+      setDbLeads(prev => [lead, ...prev]);
+  };
+
+  const handleUpdateTicket = (ticket: SupportTicket) => {
+      setDbTickets(prev => prev.map(t => t.id === ticket.id ? ticket : t));
+  };
+
+  const handleAddTicket = (ticket: SupportTicket) => {
+      setDbTickets(prev => [ticket, ...prev]);
+  };
+
+  const handleAddOrg = (org: Organization) => {
+      setDbOrgs(prev => [...prev, org]);
+  };
+
+  const handleAddUser = (user: User) => {
+      setDbUsers(prev => [...prev, user]);
   };
 
   const createNewOrder = () => {
-      // Create a blank order template
       const newOrder: ServiceOrder = {
           id: Math.random().toString(36).substr(2, 9),
           processNumber: `NOVO-${new Date().getFullYear()}`,
           priority: 'Normal' as any,
-          technicianName: 'Por Atribuir',
+          technicianName: currentUser?.role === UserRole.TECHNICIAN ? currentUser.name : 'Por Atribuir',
           assistantTechnicianName: '',
           status: ServiceStatus.PENDING,
-          channel: 'Telefone',
+          channel: 'Portal',
           startDate: new Date().toISOString(),
           endDate: new Date(Date.now() + 7200000).toISOString(),
           vehicle: '',
@@ -60,15 +198,119 @@ const App: React.FC = () => {
       handleEditOrder(newOrder);
   };
 
-  const filteredOrders = orders.filter(o => 
-    o.customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    o.processNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    o.technicianName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (o.assistantTechnicianName && o.assistantTechnicianName.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  // Logic to handle navigation for creation actions
+  const handleNavigateToCreateUser = () => {
+      if (currentUser?.role === UserRole.SUPER_ADMIN) {
+          setView('admin-panel');
+      } else {
+          setView('settings');
+      }
+  };
+
+  const handleNavigateToCreateOrg = () => {
+      if (currentUser?.role === UserRole.SUPER_ADMIN) {
+          setView('admin-panel');
+      }
+  };
+
+  // --- Render Logic Routes ---
+
+  // 1. Landing Page (Default)
+  if (view === 'landing') {
+    return (
+      <LandingPage 
+        onLoginClick={() => setView('login')} 
+        onRegister={handleRegister}
+      />
+    );
+  }
+
+  // 2. Login View
+  if (view === 'login') {
+      return (
+          <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-4 relative overflow-hidden">
+              <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1581092921461-eab62e97a783?q=80&w=2070&auto=format&fit=crop')] opacity-10 bg-cover bg-center" />
+              
+              <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8 z-10">
+                  <div className="text-center mb-8">
+                      <h1 className="text-3xl font-bold text-slate-800">Suporte<span className="text-blue-600">Prime</span></h1>
+                      <p className="text-slate-500">Gestão Técnica Inteligente</p>
+                  </div>
+
+                  <div className="space-y-3">
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Simular Acesso como:</p>
+                      {dbUsers.slice(0, 5).map(u => (
+                          <button 
+                            key={u.id}
+                            onClick={() => handleLogin(u.email)}
+                            className="w-full p-4 rounded-xl border border-slate-200 hover:border-blue-500 hover:bg-blue-50 transition-all flex items-center justify-between group text-left"
+                          >
+                              <div>
+                                  <p className="font-bold text-slate-800 group-hover:text-blue-700">{u.name}</p>
+                                  <p className="text-xs text-slate-500">{u.role} • {u.organizationId}</p>
+                              </div>
+                              <ArrowRight size={18} className="text-slate-300 group-hover:text-blue-500" />
+                          </button>
+                      ))}
+                  </div>
+
+                  <div className="mt-8 pt-6 border-t border-slate-100 space-y-3">
+                      <button 
+                        onClick={() => setView('public-tracking')}
+                        className="w-full py-3 bg-slate-800 text-white rounded-xl font-medium hover:bg-slate-700 transition-colors flex items-center justify-center gap-2"
+                      >
+                          <Search size={18} /> Rastrear Encomenda / OS
+                      </button>
+                      <button 
+                        onClick={() => setView('landing')}
+                        className="w-full text-center text-sm text-slate-500 hover:text-blue-600 font-medium"
+                      >
+                        &larr; Voltar à Página Inicial
+                      </button>
+                  </div>
+              </div>
+              <p className="mt-8 text-slate-500 text-xs">© 2024 SuportePrime System</p>
+          </div>
+      );
+  }
+
+  // 3. Public Tracking View
+  if (view === 'public-tracking') {
+      return (
+          <PublicTracking 
+            onSearch={(pn) => orders.find(o => o.processNumber === pn)}
+            onBack={() => setView('login')}
+          />
+      );
+  }
+
+  // 4. PDF Read View
+  if (view === 'read-pdf' && selectedOrder) {
+      return (
+          <ServiceOrderPDF 
+            order={selectedOrder} 
+            onBack={() => setView('list')} 
+          />
+      );
+  }
+
+  // 5. Authenticated Views Wrapper
+  if (!currentUser || !currentOrg) return null;
+
+  const filteredOrders = orders.filter(o => {
+    // If client, only show their mock orders (simulated by matching name roughly or just showing all for demo)
+    if (currentUser.role === UserRole.CLIENT) {
+        return true; 
+    }
+    return (
+        o.customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        o.processNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        o.technicianName.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  });
 
   return (
-    <div className="min-h-screen bg-slate-100 flex font-sans text-slate-900">
+    <div className="min-h-screen bg-slate-100 flex font-sans text-slate-900 overflow-hidden">
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
         <div 
@@ -77,80 +319,110 @@ const App: React.FC = () => {
         />
       )}
 
-      {/* Sidebar Navigation */}
+      {/* Sidebar Navigation (Desktop) */}
       <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 transform transition-transform duration-300 cubic-bezier(0.4, 0, 0.2, 1) md:translate-x-0 md:static ${
         isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-      } border-r border-slate-800 shadow-xl`}>
-        <Sidebar currentView={view} onChangeView={(v) => { setView(v); setIsMobileMenuOpen(false); }} />
+      } border-r border-slate-800 shadow-xl shrink-0 hidden md:block`}>
+        <Sidebar 
+            currentView={view} 
+            onChangeView={(v) => { setView(v); setIsMobileMenuOpen(false); }} 
+            organization={currentOrg}
+            userRole={currentUser.role}
+        />
+      </div>
+
+       {/* Sidebar Navigation (Mobile Drawer) */}
+       <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 transform transition-transform duration-300 cubic-bezier(0.4, 0, 0.2, 1) md:hidden ${
+        isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+      } border-r border-slate-800 shadow-xl shrink-0`}>
+         <Sidebar 
+            currentView={view} 
+            onChangeView={(v) => { setView(v); setIsMobileMenuOpen(false); }} 
+            organization={currentOrg}
+            userRole={currentUser.role}
+        />
       </div>
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
-        {/* Top Header */}
-        <header className="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-4 md:px-8 shrink-0 shadow-sm z-20">
-          <div className="flex items-center gap-4">
-            <button 
-              className="p-2 -ml-2 text-slate-600 hover:bg-slate-100 rounded-lg md:hidden transition-colors"
-              onClick={() => setIsMobileMenuOpen(true)}
-            >
-              <Menu size={24} />
-            </button>
-            <h1 className="text-xl font-bold text-slate-800 hidden sm:block tracking-tight">
-              {view === 'dashboard' ? 'Painel de Controlo' : 
-               view === 'calendar' ? 'Planeamento' : 
-               view === 'list' ? 'Ordens de Serviço' : 'Ficha Técnica'}
-            </h1>
-          </div>
+      <main className="flex-1 flex flex-col h-screen overflow-hidden relative w-full">
+        
+        {/* Sticky Global Header Group */}
+        <div className="sticky top-0 z-40 w-full bg-slate-100">
+            {/* Top Navbar: User Profile & Global Alerts */}
+            <TopNavbar 
+                user={currentUser} 
+                organization={currentOrg} 
+                onLogout={handleLogout}
+                onOpenSettings={() => setView('settings')}
+            />
+            
+            {/* Operational Nav: Contextual Navigation & Actions */}
+            <OperationalNav 
+                view={view}
+                setView={setView}
+                currentUser={currentUser}
+                currentOrg={currentOrg}
+                onMobileMenuToggle={() => setIsMobileMenuOpen(true)}
+                onCreateOrder={createNewOrder}
+                onCreateUser={handleNavigateToCreateUser}
+                onCreateOrg={handleNavigateToCreateOrg}
+            />
+        </div>
 
-          <div className="flex items-center gap-4">
-             {view === 'list' && (
-                <div className="relative hidden md:block group">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={18} />
+        {/* Scrollable Content Container */}
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 custom-scrollbar bg-slate-100">
+          
+          {view === 'admin-panel' && currentUser.role === UserRole.SUPER_ADMIN && (
+              <AdminDashboard 
+                allOrgs={dbOrgs}
+                allUsers={dbUsers}
+                leads={dbLeads}
+                tickets={dbTickets}
+                onUpdateOrg={handleUpdateOrg}
+                onUpdateUser={handleUpdateUser}
+                onDeleteUser={handleDeleteUser}
+                onUpdateLead={handleUpdateLead}
+                onAddLead={handleAddLead}
+                onUpdateTicket={handleUpdateTicket}
+                onAddTicket={handleAddTicket}
+                onAddOrg={handleAddOrg}
+                onAddUser={handleAddUser}
+              />
+          )}
+
+          {view === 'dashboard' && <Dashboard orders={orders} plan={currentOrg.plan} />}
+
+          {view === 'calendar' && currentOrg.plan !== PlanType.FREE && (
+             <CalendarView orders={orders} onSelectOrder={handleEditOrder} />
+          )}
+
+          {view === 'settings' && (
+              <OrganizationSettings 
+                organization={currentOrg}
+                users={dbUsers.filter(u => u.organizationId === currentOrg.id)}
+                onUpdatePlan={(plan) => handleUpdateOrg({...currentOrg, plan})}
+                onAddUser={(role) => alert('Simulação: Utilize o botão "Novo" no menu superior.')}
+                onBack={() => setView('dashboard')}
+              />
+          )}
+
+          {view === 'list' && (
+            <div className="space-y-6 max-w-7xl mx-auto pb-10">
+              {/* Search and Filters */}
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                 <div className="relative flex-1 w-full sm:w-auto sm:max-w-md">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                     <input 
                         type="text"
-                        placeholder="Pesquisar..."
-                        className="pl-10 pr-4 py-2 rounded-lg border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white w-64 transition-all"
+                        placeholder="Pesquisar por cliente, técnico ou processo..."
+                        className="pl-10 pr-4 py-2 rounded-lg border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white w-full transition-all"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
-                </div>
-             )}
-            <div className="flex items-center gap-3 pl-4 border-l border-slate-200">
-                <div className="text-right hidden sm:block">
-                    <p className="text-sm font-semibold text-slate-800">Admin</p>
-                    <p className="text-xs text-slate-500">Gestor de Frota</p>
-                </div>
-                <div className="h-9 w-9 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-blue-500/30">
-                  SP
-                </div>
-            </div>
-          </div>
-        </header>
-
-        {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 custom-scrollbar">
-          
-          {view === 'dashboard' && <Dashboard orders={orders} />}
-
-          {view === 'calendar' && <CalendarView orders={orders} onSelectOrder={handleEditOrder} />}
-
-          {view === 'list' && (
-            <div className="space-y-6 max-w-7xl mx-auto">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                 <div className="flex gap-2">
-                    <button className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 flex items-center gap-2 hover:bg-slate-50 transition-colors shadow-sm">
-                        <Filter size={16} /> Filtros Avançados
-                    </button>
-                    <div className="text-sm text-slate-500 py-2 px-2">
-                        {filteredOrders.length} registos encontrados
-                    </div>
                  </div>
-                 <button 
-                    onClick={createNewOrder}
-                    className="px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold flex items-center gap-2 hover:bg-blue-700 shadow-lg shadow-blue-600/20 transition-all"
-                 >
-                    <Plus size={18} /> Criar Ordem
-                 </button>
+                 <button className="w-full sm:w-auto px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 flex items-center justify-center gap-2 hover:bg-slate-50 transition-colors shadow-sm">
+                    <Filter size={16} /> Filtros
+                </button>
               </div>
 
               <div className="grid gap-4">
@@ -203,7 +475,6 @@ const App: React.FC = () => {
 
                         {/* Tech & Time Info */}
                         <div className="flex flex-col gap-3 justify-center min-w-[200px] border-t md:border-t-0 md:border-l border-slate-100 pt-4 md:pt-0 md:pl-6">
-                             {/* Team Section */}
                              <div className="space-y-2">
                                 <div className="flex items-center gap-2">
                                     <div className="w-8 h-8 rounded bg-slate-100 flex items-center justify-center text-slate-600">
@@ -219,15 +490,10 @@ const App: React.FC = () => {
                                 </div>
                              </div>
 
-                             {/* Date Section */}
                              <div className="flex items-center gap-2 mt-1">
                                 <Calendar size={14} className="text-slate-400"/>
                                 <span className="text-sm font-medium text-slate-700">
                                     {new Date(order.startDate).toLocaleDateString('pt-PT')}
-                                </span>
-                                <Clock size={14} className="text-slate-400 ml-2"/>
-                                <span className="text-sm font-medium text-slate-700">
-                                    {new Date(order.startDate).toLocaleTimeString('pt-PT', {hour: '2-digit', minute:'2-digit'})}
                                 </span>
                              </div>
                         </div>
@@ -247,6 +513,7 @@ const App: React.FC = () => {
               order={selectedOrder}
               onSave={handleSaveOrder}
               onCancel={() => { setSelectedOrder(null); setView('list'); }}
+              onPrint={() => setView('read-pdf')}
             />
           )}
         </div>
