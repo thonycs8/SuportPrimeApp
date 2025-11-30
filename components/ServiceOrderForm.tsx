@@ -1,19 +1,20 @@
 
 import React, { useState } from 'react';
-import { ServiceOrder, ServiceStatus, Priority, ServiceImage } from '../types';
+import { ServiceOrder, ServiceStatus, Priority, ServiceImage, User, ChecklistItem } from '../types';
 import { SignaturePad } from './SignaturePad';
-import { Save, X, Plus, Trash2, Camera, FileText, User, MapPin, Zap, Calendar as CalIcon, Users, PenTool, Printer, ChevronLeft } from 'lucide-react';
+import { Save, X, Plus, Trash2, Camera, FileText, User as UserIcon, MapPin, Zap, Users, PenTool, Printer, ChevronLeft, Play, Square, Clock, Star, History, ListChecks, ShieldCheck } from 'lucide-react';
 
 interface ServiceOrderFormProps {
   order: ServiceOrder;
   onSave: (order: ServiceOrder) => void;
   onCancel: () => void;
   onPrint?: () => void;
+  currentUser?: User | null;
 }
 
-export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({ order: initialOrder, onSave, onCancel, onPrint }) => {
+export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({ order: initialOrder, onSave, onCancel, onPrint, currentUser }) => {
   const [order, setOrder] = useState<ServiceOrder>(initialOrder);
-  const [activeTab, setActiveTab] = useState<'info' | 'execution' | 'photos' | 'signatures'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'execution' | 'photos' | 'checklist' | 'signatures' | 'history'>('info');
 
   const handleChange = (field: keyof ServiceOrder, value: any) => {
     setOrder(prev => ({ ...prev, [field]: value }));
@@ -24,6 +25,23 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({ order: initi
       ...prev,
       customer: { ...prev.customer, [field]: value }
     }));
+  };
+
+  const handleStatusChange = (newStatus: ServiceStatus) => {
+      if (newStatus !== order.status) {
+          setOrder(prev => ({
+              ...prev,
+              status: newStatus,
+              statusHistory: [
+                  ...(prev.statusHistory || []),
+                  {
+                      status: newStatus,
+                      timestamp: new Date().toISOString(),
+                      updatedBy: currentUser?.name || 'Utilizador'
+                  }
+              ]
+          }));
+      }
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -52,14 +70,63 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({ order: initi
     }));
   };
 
+  const toggleChecklistItem = (itemId: string) => {
+      if (!order.checklist) return;
+      const updatedChecklist = order.checklist.map(item => 
+          item.id === itemId ? { ...item, checked: !item.checked } : item
+      );
+      setOrder(prev => ({ ...prev, checklist: updatedChecklist }));
+  };
+
+  // --- Start/Stop Logic for Technicians ---
+  const handleStartJob = () => {
+      const newStatus = ServiceStatus.IN_PROGRESS;
+      setOrder(prev => ({
+          ...prev,
+          status: newStatus,
+          actualStartTime: new Date().toISOString(),
+          statusHistory: [
+              ...(prev.statusHistory || []),
+              {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: currentUser?.name || 'Técnico'
+              }
+          ]
+      }));
+  };
+
+  const handleFinishJob = () => {
+      if (!order.actualStartTime) {
+          alert("Erro: O trabalho não foi iniciado corretamente.");
+          return;
+      }
+      const newStatus = ServiceStatus.DONE;
+      setOrder(prev => ({
+          ...prev,
+          status: newStatus,
+          actualEndTime: new Date().toISOString(),
+          statusHistory: [
+              ...(prev.statusHistory || []),
+              {
+                  status: newStatus,
+                  timestamp: new Date().toISOString(),
+                  updatedBy: currentUser?.name || 'Técnico'
+              }
+          ]
+      }));
+      setActiveTab('signatures'); 
+  };
+
   const tabs = [
     { id: 'info', label: 'Dados', icon: Zap },
     { id: 'execution', label: 'Relatório', icon: FileText },
+    { id: 'checklist', label: 'Checklist', icon: ListChecks }, // New Tab
     { id: 'photos', label: 'Fotos', icon: Camera },
-    { id: 'signatures', label: 'Assinar', icon: PenTool },
+    { id: 'signatures', label: 'Validar', icon: PenTool },
+    { id: 'history', label: 'Auditoria', icon: ShieldCheck }, // Renamed to Auditoria
   ];
 
-  // Mobile First Input Style: White background, Dark Text, Larger touch target
   const inputClass = "w-full rounded-lg bg-white border border-slate-300 p-3 text-slate-800 shadow-sm focus:bg-white focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all font-medium placeholder:text-slate-400 text-base appearance-none";
   const labelClass = "block text-xs font-bold text-slate-500 uppercase mb-1.5 tracking-wide";
 
@@ -83,7 +150,7 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({ order: initi
              </div>
              <div className="flex items-center gap-2">
                  <span className={`text-[10px] px-2 py-1 rounded-full uppercase font-bold tracking-wider ${
-                  order.priority === Priority.CRITICAL ? 'bg-red-500 text-white' :
+                  order.priority === Priority.CRITICAL ? 'bg-red-50 text-white' :
                   order.priority === Priority.HIGH ? 'bg-orange-500 text-white' :
                   'bg-blue-500 text-white'
                 }`}>
@@ -118,9 +185,41 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({ order: initi
         </div>
       </div>
 
+      {/* Execution Control Bar */}
+      <div className="bg-blue-50 border-b border-blue-100 p-3 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-blue-800">
+            <Clock size={18} />
+            <span className="text-sm font-bold">Controlo de Tempo:</span>
+            <span className="text-sm font-mono bg-white px-2 py-0.5 rounded border border-blue-200">
+                {order.actualStartTime 
+                    ? new Date(order.actualStartTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) 
+                    : '--:--'} 
+                {' > '}
+                {order.actualEndTime 
+                    ? new Date(order.actualEndTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) 
+                    : '--:--'}
+            </span>
+        </div>
+        <div className="flex gap-2 w-full sm:w-auto">
+            {order.status === ServiceStatus.PENDING || order.status === ServiceStatus.RESCHEDULE ? (
+                <button onClick={handleStartJob} className="flex-1 sm:flex-none bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-emerald-700 flex items-center justify-center gap-2 shadow-sm">
+                    <Play size={16} fill="currentColor" /> Iniciar Trabalho
+                </button>
+            ) : order.status === ServiceStatus.IN_PROGRESS ? (
+                <button onClick={handleFinishJob} className="flex-1 sm:flex-none bg-slate-800 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-slate-900 flex items-center justify-center gap-2 shadow-sm animate-pulse">
+                    <Square size={16} fill="currentColor" /> Finalizar Trabalho
+                </button>
+            ) : (
+                <span className="text-sm font-bold text-emerald-600 flex items-center gap-1 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
+                    <div className="w-2 h-2 bg-emerald-500 rounded-full"></div> Serviço Concluído
+                </span>
+            )}
+        </div>
+      </div>
+
       {/* Scrollable Tabs */}
       <div className="sticky top-[120px] md:top-0 z-20 bg-slate-50 border-b border-slate-200 overflow-x-auto hide-scrollbar">
-        <div className="flex md:grid md:grid-cols-4 w-full min-w-max md:min-w-0">
+        <div className="flex md:grid md:grid-cols-6 w-full min-w-max md:min-w-0">
           {tabs.map(tab => (
             <button
               key={tab.id}
@@ -142,7 +241,6 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({ order: initi
       <div className="p-4 md:p-8 overflow-y-auto flex-1 bg-slate-100">
         {activeTab === 'info' && (
           <div className="space-y-6">
-            {/* Equipa Técnica Section */}
             <section className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
               <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2 pb-2 border-b border-slate-100">
                 <Users size={14} /> Equipa e Planeamento
@@ -177,7 +275,7 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({ order: initi
                   />
                 </div>
                 <div>
-                  <label className={labelClass}>Data Início</label>
+                  <label className={labelClass}>Agendado Início</label>
                   <input
                     type="datetime-local"
                     value={order.startDate.slice(0, 16)}
@@ -186,7 +284,7 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({ order: initi
                   />
                 </div>
                 <div>
-                  <label className={labelClass}>Data Fim</label>
+                  <label className={labelClass}>Agendado Fim</label>
                   <input
                     type="datetime-local"
                     value={order.endDate.slice(0, 16)}
@@ -199,7 +297,7 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({ order: initi
                   <div className="relative">
                     <select
                         value={order.status}
-                        onChange={(e) => handleChange('status', e.target.value)}
+                        onChange={(e) => handleStatusChange(e.target.value as ServiceStatus)}
                         className={inputClass}
                     >
                         {Object.values(ServiceStatus).map(s => <option key={s} value={s}>{s}</option>)}
@@ -209,10 +307,9 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({ order: initi
               </div>
             </section>
 
-            {/* Cliente Section */}
             <section className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
               <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2 pb-2 border-b border-slate-100">
-                <User size={14} /> Dados do Cliente
+                <UserIcon size={14} /> Dados do Cliente (CRM)
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
@@ -274,6 +371,18 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({ order: initi
                         />
                     </div>
                 </div>
+                {order.customer.contractStatus && (
+                    <div className="col-span-full mt-2 p-3 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between">
+                        <div>
+                            <p className="text-xs text-slate-500 uppercase font-bold">Contrato</p>
+                            <p className="font-bold text-slate-800">{order.customer.contractStatus}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-slate-500 uppercase font-bold">SLA</p>
+                            <p className="font-bold text-blue-600">{order.customer.slaLevel || 'N/A'}</p>
+                        </div>
+                    </div>
+                )}
               </div>
             </section>
           </div>
@@ -311,6 +420,33 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({ order: initi
                 />
             </div>
           </div>
+        )}
+
+        {/* CHECKLIST TAB - NEW */}
+        {activeTab === 'checklist' && (
+            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
+                    <ListChecks size={20} className="text-blue-600"/> 
+                    Protocolo de Execução
+                </h3>
+                {(!order.checklist || order.checklist.length === 0) ? (
+                    <div className="text-center py-10 text-slate-400">Nenhuma checklist configurada.</div>
+                ) : (
+                    <div className="space-y-3">
+                        {order.checklist.map(item => (
+                            <label key={item.id} className={`flex items-center p-4 rounded-lg border transition-all cursor-pointer ${item.checked ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-slate-200 hover:border-slate-300'}`}>
+                                <input 
+                                    type="checkbox" 
+                                    checked={item.checked} 
+                                    onChange={() => toggleChecklistItem(item.id)}
+                                    className="w-5 h-5 text-emerald-600 rounded focus:ring-emerald-500"
+                                />
+                                <span className={`ml-3 font-medium ${item.checked ? 'text-emerald-800' : 'text-slate-700'}`}>{item.label}</span>
+                            </label>
+                        ))}
+                    </div>
+                )}
+            </div>
         )}
 
         {activeTab === 'photos' && (
@@ -377,6 +513,32 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({ order: initi
                 </div>
             </div>
             
+            {/* NPS SURVEY */}
+            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm text-center">
+                 <h3 className="text-sm font-bold text-slate-800 mb-4">Avaliação do Cliente (NPS)</h3>
+                 <p className="text-xs text-slate-500 mb-4">Qual a probabilidade de recomendar os nossos serviços? (0 a 10)</p>
+                 <div className="flex flex-wrap justify-center gap-2">
+                     {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(score => (
+                         <button
+                            key={score}
+                            onClick={() => handleChange('npsScore', score)}
+                            className={`w-8 h-8 md:w-10 md:h-10 rounded-lg text-sm md:text-base font-bold transition-all ${
+                                order.npsScore === score 
+                                ? 'bg-blue-600 text-white scale-110 shadow-lg' 
+                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            }`}
+                         >
+                             {score}
+                         </button>
+                     ))}
+                 </div>
+                 {order.npsScore !== undefined && (
+                     <div className="mt-3 text-sm font-medium text-blue-600">
+                         Avaliação registada: {order.npsScore}
+                     </div>
+                 )}
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 pb-10">
               <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
                  <SignaturePad 
@@ -397,6 +559,80 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({ order: initi
               </div>
             </div>
           </div>
+        )}
+
+        {/* AUDIT LOG / HISTORY - UPDATED */}
+        {activeTab === 'history' && (
+            <div className="space-y-6">
+                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                    <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
+                        <History size={20} className="text-blue-600"/> 
+                        Timeline de Estados
+                    </h3>
+                    
+                    {(!order.statusHistory || order.statusHistory.length === 0) ? (
+                        <div className="text-center py-10 text-slate-400 text-sm">Nenhum histórico registado.</div>
+                    ) : (
+                        <div className="space-y-8 pl-4 border-l-2 border-slate-100 ml-2">
+                            {order.statusHistory.slice().reverse().map((entry, index) => (
+                                <div key={index} className="relative">
+                                    <div className={`absolute -left-[21px] w-4 h-4 rounded-full ring-4 ring-white ${
+                                        entry.status === ServiceStatus.DONE ? 'bg-emerald-500' :
+                                        entry.status === ServiceStatus.IN_PROGRESS ? 'bg-blue-500' :
+                                        'bg-slate-300'
+                                    }`}></div>
+                                    <div>
+                                        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 mb-1">
+                                            <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase w-fit ${
+                                                entry.status === ServiceStatus.DONE ? 'bg-emerald-100 text-emerald-700' :
+                                                entry.status === ServiceStatus.IN_PROGRESS ? 'bg-blue-100 text-blue-700' :
+                                                'bg-slate-100 text-slate-600'
+                                            }`}>
+                                                {entry.status}
+                                            </span>
+                                            <span className="text-xs text-slate-400">
+                                                {new Date(entry.timestamp).toLocaleString('pt-PT')}
+                                            </span>
+                                        </div>
+                                        <p className="text-sm text-slate-700">
+                                            Alterado por <span className="font-bold">{entry.updatedBy}</span>
+                                        </p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                    <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
+                        <ShieldCheck size={20} className="text-purple-600"/> 
+                        Audit Log (Sistema)
+                    </h3>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm">
+                            <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-xs">
+                                <tr>
+                                    <th className="px-4 py-2">Data/Hora</th>
+                                    <th className="px-4 py-2">Utilizador</th>
+                                    <th className="px-4 py-2">Ação</th>
+                                    <th className="px-4 py-2">Detalhes</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {order.auditLog?.map(log => (
+                                    <tr key={log.id} className="hover:bg-slate-50">
+                                        <td className="px-4 py-2 text-slate-500">{new Date(log.timestamp).toLocaleString()}</td>
+                                        <td className="px-4 py-2 font-medium">{log.userName}</td>
+                                        <td className="px-4 py-2"><span className="bg-slate-100 px-2 py-0.5 rounded text-xs font-bold">{log.action}</span></td>
+                                        <td className="px-4 py-2 text-slate-600">{log.details}</td>
+                                    </tr>
+                                )) || <tr><td colSpan={4} className="px-4 py-4 text-center text-slate-400">Sem registos de auditoria.</td></tr>}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         )}
       </div>
     </div>

@@ -37,9 +37,9 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ orders, onSelectOrde
   };
 
   const isSameDay = (d1: Date, d2: Date) => {
-    return d1.getDate() === d2.getDate() &&
+    return d1.getFullYear() === d2.getFullYear() &&
            d1.getMonth() === d2.getMonth() &&
-           d1.getFullYear() === d2.getFullYear();
+           d1.getDate() === d2.getDate();
   };
 
   // --- Navigation Handlers ---
@@ -117,20 +117,22 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ orders, onSelectOrde
                 )}
               </div>
               
-              <div className="space-y-1 overflow-hidden">
+              <div className="space-y-1 overflow-hidden max-h-[80px]">
                 {dayOrders.slice(0, 3).map(order => (
                   <button
                     key={order.id}
                     onClick={(e) => { e.stopPropagation(); onSelectOrder(order); }}
-                    className={`w-full text-left text-[10px] truncate px-1.5 py-0.5 rounded border-l-2 ${
+                    className={`block w-full text-left text-[10px] truncate px-1.5 py-0.5 rounded border-l-2 mb-1 ${
                        getStatusColor(order.status).replace('bg-', 'hover:brightness-95 bg-')
                     }`}
+                    title={`${order.customer.name} - ${order.status}`}
                   >
-                    <span className="font-bold">{new Date(order.startDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span> {order.customer.name}
+                    <span className="font-bold mr-1">{new Date(order.startDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                    {order.customer.name}
                   </button>
                 ))}
                 {dayOrders.length > 3 && (
-                  <div className="text-center text-[10px] text-slate-400 font-medium">
+                  <div className="text-center text-[10px] text-slate-400 font-medium cursor-default">
                     + {dayOrders.length - 3} mais
                   </div>
                 )}
@@ -161,7 +163,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ orders, onSelectOrde
       <button
         onClick={(e) => { e.stopPropagation(); onSelectOrder(order); }}
         style={{ top: `${topOffset}px`, height: `${height}px` }}
-        className={`absolute inset-x-1 rounded-md border text-left p-2 shadow-sm text-xs overflow-hidden transition-all hover:z-10 hover:shadow-md hover:scale-[1.02] flex flex-col gap-0.5 ${getStatusColor(order.status)}`}
+        className={`absolute inset-x-1 rounded-md border text-left p-2 shadow-sm text-xs overflow-hidden transition-all hover:z-20 hover:shadow-md hover:scale-[1.02] flex flex-col gap-0.5 z-10 ${getStatusColor(order.status)}`}
       >
         <div className="flex justify-between items-start">
              <span className="font-bold truncate">{order.customer.name}</span>

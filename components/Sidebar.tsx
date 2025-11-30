@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { ViewMode, PlanType, Organization, UserRole } from '../types';
-import { LayoutDashboard, Calendar, List, Zap, ShieldAlert } from 'lucide-react';
+import { LayoutDashboard, Calendar, List, Zap, ShieldAlert, BarChart } from 'lucide-react';
 
 interface SidebarProps {
   currentView: ViewMode;
@@ -11,8 +11,14 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, organization, userRole }) => {
+  const isTechnician = userRole === UserRole.TECHNICIAN || userRole === UserRole.ASSISTANT;
+
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    // Show Tech Dashboard for Techs, or standard Dashboard for others
+    ...(isTechnician 
+        ? [{ id: 'tech-dashboard', label: 'Minha Performance', icon: BarChart }] 
+        : [{ id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard }]
+    ),
     { id: 'list', label: 'Agenda de Serviço', icon: List },
     // Only show Calendar if Plan is NOT Free
     ...(organization.plan !== PlanType.FREE ? [{ id: 'calendar', label: 'Calendário', icon: Calendar }] : []),
@@ -25,7 +31,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, org
              <Zap size={20} className="text-white" fill="currentColor"/>
         </div>
         <div>
-            <h1 className="text-lg font-bold tracking-tight text-white leading-tight">Suporte<span className="text-blue-500">Prime</span></h1>
+            <h1 className="text-lg font-bold tracking-tight text-white leading-tight">SuportPrime<span className="text-blue-500">App</span></h1>
             <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Gestão Técnica</p>
         </div>
       </div>

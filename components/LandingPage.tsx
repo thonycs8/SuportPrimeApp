@@ -37,7 +37,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick, onRegist
             <div className="bg-blue-600 p-1.5 md:p-2 rounded-lg shadow-lg shadow-blue-900/20">
               <Zap size={20} className="text-white" fill="currentColor"/>
             </div>
-            <span className="text-xl md:text-2xl font-bold tracking-tight text-slate-900">Suporte<span className="text-blue-600">Prime</span></span>
+            <span className="text-xl md:text-2xl font-bold tracking-tight text-slate-900">SuportPrime<span className="text-blue-600">App</span></span>
           </div>
           <div className="flex items-center gap-4">
             <div className="hidden md:flex gap-8">
@@ -280,7 +280,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick, onRegist
       {/* Footer */}
       <footer className="bg-slate-950 text-slate-400 py-8 border-t border-slate-900">
         <div className="max-w-7xl mx-auto px-4 text-center">
-          <p className="font-bold text-white mb-2">SuportePrime</p>
+          <p className="font-bold text-white mb-2">SuportePrimeApp</p>
           <p className="text-xs">© 2024 Todos os direitos reservados.</p>
         </div>
       </footer>

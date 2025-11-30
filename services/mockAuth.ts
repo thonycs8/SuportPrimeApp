@@ -78,7 +78,12 @@ export const MOCK_LEADS: Lead[] = [
     phone: '912345678',
     status: LeadStatus.NEW,
     notes: 'Interessado no plano PRO para 5 técnicos.',
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    potentialValue: 1000,
+    probability: 20,
+    lastContact: new Date().toISOString(),
+    proposedPlan: PlanType.PRO,
+    userCount: 5
   },
   {
     id: 'l2',
@@ -88,7 +93,12 @@ export const MOCK_LEADS: Lead[] = [
     phone: '966554433',
     status: LeadStatus.CONTACTED,
     notes: 'Aguarda demonstração do módulo de assinaturas.',
-    createdAt: new Date(Date.now() - 86400000 * 2).toISOString()
+    createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
+    potentialValue: 2000,
+    probability: 60,
+    lastContact: new Date(Date.now() - 86400000).toISOString(),
+    proposedPlan: PlanType.PRO,
+    userCount: 10
   },
   {
     id: 'l3',
@@ -97,8 +107,27 @@ export const MOCK_LEADS: Lead[] = [
     email: 'sousa@cnorte.pt',
     phone: '933221100',
     status: LeadStatus.QUALIFIED,
-    notes: 'Grande potencial. Empresa com 20 técnicos.',
-    createdAt: new Date(Date.now() - 86400000 * 5).toISOString()
+    notes: 'Grande potencial. Empresa com 25 técnicos.',
+    createdAt: new Date(Date.now() - 86400000 * 5).toISOString(),
+    potentialValue: 4500,
+    probability: 85,
+    lastContact: new Date(Date.now() - 86400000 * 2).toISOString(),
+    proposedPlan: PlanType.PRO,
+    userCount: 25
+  },
+  {
+    id: 'l4',
+    name: 'Joana Vaz',
+    companyName: 'TechFix Repair',
+    email: 'joana@techfix.pt',
+    phone: '922111333',
+    status: LeadStatus.NEW,
+    notes: 'Contato via LinkedIn.',
+    createdAt: new Date().toISOString(),
+    potentialValue: 1000,
+    probability: 10,
+    proposedPlan: PlanType.PRO,
+    userCount: 5
   }
 ];
 

@@ -67,13 +67,34 @@ export interface User {
   avatar?: string;
 }
 
+// PREMIUM: Contract & SLA Types
+export enum ContractStatus {
+  ACTIVE = 'Ativo',
+  EXPIRED = 'Expirado',
+  PENDING = 'Pendente',
+  NONE = 'Sem Contrato'
+}
+
+export enum SLALevel {
+  STANDARD = 'Standard (48h)',
+  GOLD = 'Gold (24h)',
+  PLATINUM = 'Platinum (4h)'
+}
+
 export interface Customer {
+  id?: string; // Added ID for linking
   name: string;
   nif: string;
   address: string;
   postalCode: string;
   city: string; 
   contacts: string;
+  email?: string;
+  // Premium CRM Fields
+  contractStatus?: ContractStatus;
+  slaLevel?: SLALevel;
+  tags?: string[];
+  ltv?: number; // Lifetime Value
 }
 
 export interface ServiceImage {
@@ -83,8 +104,32 @@ export interface ServiceImage {
   description: string;
 }
 
+export interface StatusHistoryEntry {
+  status: ServiceStatus;
+  timestamp: string;
+  updatedBy: string;
+}
+
+// PREMIUM: Audit Log
+export interface AuditLogEntry {
+  id: string;
+  action: string;
+  details: string;
+  timestamp: string;
+  userId: string;
+  userName: string;
+}
+
+// PREMIUM: Checklist
+export interface ChecklistItem {
+  id: string;
+  label: string;
+  checked: boolean;
+}
+
 export interface ServiceOrder {
   id: string;
+  organizationId: string; // Tenant Isolation
   processNumber: string;
   priority: Priority;
   
@@ -93,9 +138,19 @@ export interface ServiceOrder {
   assistantTechnicianName?: string;
   
   status: ServiceStatus;
+  statusHistory: StatusHistoryEntry[]; 
+  auditLog?: AuditLogEntry[]; // Premium traceability
+  
   channel: string;
+  
+  // Scheduled Time
   startDate: string;
   endDate: string;
+
+  // Real Execution Time (New)
+  actualStartTime?: string;
+  actualEndTime?: string;
+  
   vehicle: string;
   
   // Customer Data
@@ -105,11 +160,17 @@ export interface ServiceOrder {
   scope: string; 
   report: string; 
   observations: string;
+  
+  // Premium: Checklist
+  checklist?: ChecklistItem[];
 
   // Media & Signatures
   images: ServiceImage[];
   technicianSignature?: string; 
-  customerSignature?: string; 
+  customerSignature?: string;
+  
+  // Quality Metrics (New)
+  npsScore?: number; // 0 to 10
 }
 
 // --- CRM & Support Types ---
@@ -128,9 +189,17 @@ export interface Lead {
   companyName: string;
   email: string;
   phone: string;
+  nif?: string; // Added NIF
   status: LeadStatus;
   notes: string;
   createdAt: string;
+  potentialValue?: number; // For pipeline forecast
+  probability?: number;    // 0-100%
+  lastContact?: string;
+  
+  // Commercial Proposal Details
+  proposedPlan?: PlanType;
+  userCount?: number; // 5, 10, 25, 50
 }
 
 export enum TicketStatus {
@@ -159,4 +228,4 @@ export interface SupportTicket {
   messages: TicketMessage[];
 }
 
-export type ViewMode = 'landing' | 'login' | 'public-tracking' | 'dashboard' | 'calendar' | 'list' | 'edit' | 'read-pdf' | 'settings' | 'admin-panel';
+export type ViewMode = 'landing' | 'login' | 'public-tracking' | 'dashboard' | 'tech-dashboard' | 'calendar' | 'list' | 'edit' | 'read-pdf' | 'settings' | 'admin-panel' | 'support';

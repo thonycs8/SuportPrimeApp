@@ -1,7 +1,8 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   LayoutDashboard, List, Calendar, Plus, ChevronDown, 
-  UserPlus, Building, FilePlus, ShieldAlert, Menu, Settings
+  UserPlus, Building, FilePlus, ShieldAlert, Menu, Settings, BarChart, LifeBuoy
 } from 'lucide-react';
 import { ViewMode, User, UserRole, PlanType, Organization } from '../types';
 
@@ -36,23 +37,33 @@ export const OperationalNav: React.FC<OperationalNavProps> = ({
     };
   }, []);
 
+  const isTechnician = currentUser.role === UserRole.TECHNICIAN || currentUser.role === UserRole.ASSISTANT;
+
   const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    // Conditional Dashboard Link
+    ...(isTechnician 
+        ? [{ id: 'tech-dashboard', label: 'Minha Performance', icon: BarChart }] 
+        : [{ id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard }]
+    ),
     { id: 'list', label: 'Agenda', icon: List },
     ...(currentOrg.plan !== PlanType.FREE ? [{ id: 'calendar', label: 'Calendário', icon: Calendar }] : []),
     ...(currentUser.role === UserRole.SUPER_ADMIN ? [{ id: 'admin-panel', label: 'Painel Admin', icon: ShieldAlert }] : []),
+    // Add Support Link
+    { id: 'support', label: 'Suporte', icon: LifeBuoy }
   ];
 
   const getPageTitle = () => {
     switch(view) {
         case 'dashboard': return 'Dashboard Geral';
+        case 'tech-dashboard': return 'Performance Técnica';
         case 'list': return 'Agenda de Serviços';
         case 'calendar': return 'Calendário';
         case 'admin-panel': return 'Administração';
         case 'settings': return 'Configurações';
         case 'edit': return 'Editar Ordem';
         case 'read-pdf': return 'Relatório PDF';
-        default: return 'SuportePrime';
+        case 'support': return 'Suporte Técnico';
+        default: return 'SuportPrimeApp';
     }
   };
 
