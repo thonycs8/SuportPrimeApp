@@ -31,8 +31,10 @@ export const DataImport: React.FC<DataImportProps> = ({ onImport, onClose }) => 
       if (importType === 'leads') {
          const valid = parsed.every(i => i.companyName && i.email);
          if (!valid) throw new Error('Dados inválidos para Leads. Campos obrigatórios: companyName, email.');
-      } 
-      // Add more validations if needed
+      } else if (importType === 'orders') {
+         const valid = parsed.every(i => i.customerName && i.scope && i.startDate);
+         if (!valid) throw new Error('Dados inválidos para Ordens. Campos obrigatórios: customerName, scope, startDate.');
+      }
 
       onImport(importType, parsed);
       setSuccess(true);
@@ -62,7 +64,11 @@ export const DataImport: React.FC<DataImportProps> = ({ onImport, onClose }) => 
     "customerName": "Cliente ABC",
     "nif": "500123456",
     "scope": "Instalação AC",
-    "date": "2024-12-01T09:00:00Z"
+    "technician": "João Silva",
+    "startDate": "2024-12-10T09:00:00Z",
+    "endDate": "2024-12-10T12:00:00Z",
+    "priority": "Alta",
+    "city": "Lisboa"
   }
 ]`
   };
@@ -93,7 +99,7 @@ export const DataImport: React.FC<DataImportProps> = ({ onImport, onClose }) => 
                         onClick={() => setImportType('orders')}
                         className={`flex-1 py-3 px-4 rounded-lg border-2 font-bold text-sm transition-all ${importType === 'orders' ? 'border-blue-600 text-blue-700 bg-blue-50' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}
                     >
-                        Ordens de Serviço
+                        OS & Agenda
                     </button>
                 </div>
             </div>

@@ -1,5 +1,5 @@
 
-import { ServiceOrder, ServiceStatus, Priority, ContractStatus, SLALevel, AuditLogEntry, ChecklistItem } from '../types';
+import { ServiceOrder, ServiceStatus, Priority, ContractStatus, SLALevel, AuditLogEntry, ChecklistItem, Vehicle, Invoice, InvoiceStatus, Employee } from '../types';
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
@@ -39,14 +39,13 @@ export const generateMockData = (): ServiceOrder[] => {
   const orders: ServiceOrder[] = [];
   const now = new Date();
   
-  // Create orders primarily for org-pro (The Demo Account)
   for (let i = 0; i < 20; i++) {
     const startDate = new Date(now);
-    startDate.setDate(now.getDate() + (i - 7)); // Past and future dates
+    startDate.setDate(now.getDate() + (i - 7));
     startDate.setHours(9 + Math.floor(Math.random() * 8), 0, 0, 0);
     
     const endDate = new Date(startDate);
-    const duration = 1 + Math.floor(Math.random() * 3); // 1 to 3 hours duration
+    const duration = 1 + Math.floor(Math.random() * 3);
     endDate.setHours(startDate.getHours() + duration);
 
     const tech = getRandomElement(technicians);
@@ -55,14 +54,13 @@ export const generateMockData = (): ServiceOrder[] => {
 
     const status = getRandomElement(Object.values(ServiceStatus));
     
-    // Simulate NPS and Actual Times for DONE orders
     let npsScore = undefined;
     let actualStartTime = undefined;
     let actualEndTime = undefined;
     let checklist = [...standardChecklist];
 
     if (status === ServiceStatus.DONE) {
-        npsScore = Math.floor(Math.random() * 3) + 8; // Mostly 8, 9, 10 for demo
+        npsScore = Math.floor(Math.random() * 3) + 8;
         actualStartTime = startDate.toISOString();
         const actualEnd = new Date(endDate);
         actualEnd.setMinutes(endDate.getMinutes() + Math.floor(Math.random() * 30) - 15);
@@ -118,9 +116,9 @@ export const generateMockData = (): ServiceOrder[] => {
         slaLevel: i % 4 === 0 ? SLALevel.PLATINUM : SLALevel.STANDARD,
         tags: i % 2 === 0 ? ['VIP', 'Recorrente'] : ['Novo']
       },
-      scope: 'Manutenção preventiva de equipamentos de climatização e verificação de quadros elétricos conforme normas ISO.',
-      report: i < 5 ? 'Serviço realizado. Medições nominais. Limpeza efetuada.' : '',
-      observations: i < 5 ? 'Cliente solicitou orçamento para nova unidade exterior.' : '',
+      scope: 'Manutenção preventiva de equipamentos de climatização.',
+      report: i < 5 ? 'Serviço realizado. Medições nominais.' : '',
+      observations: i < 5 ? 'Cliente solicitou orçamento.' : '',
       checklist: checklist,
       images: [],
       technicianSignature: undefined,
@@ -128,39 +126,26 @@ export const generateMockData = (): ServiceOrder[] => {
       npsScore: npsScore
     });
   }
-
-  // Create a few orders for org-free (The Free Account)
-  for (let i = 0; i < 3; i++) {
-     orders.push({
-      id: generateId(),
-      organizationId: 'org-free',
-      processNumber: `FREE-${2024000 + i}`,
-      priority: Priority.NORMAL,
-      technicianName: 'Pedro Free',
-      assistantTechnicianName: '',
-      status: i === 0 ? ServiceStatus.DONE : ServiceStatus.PENDING,
-      statusHistory: [{ status: ServiceStatus.PENDING, timestamp: new Date().toISOString(), updatedBy: 'Sistema' }],
-      channel: 'Telefone',
-      startDate: new Date().toISOString(),
-      endDate: new Date().toISOString(),
-      vehicle: 'Carro Próprio',
-      customer: {
-        name: `Cliente Pequeno ${i + 1}`,
-        nif: `200${100000 + i}`,
-        address: `Rua da Esquina, Nº ${i}`,
-        postalCode: `2000-${100 + i}`,
-        city: 'Santarém',
-        contacts: `+351 960 000 00${i}`,
-        contractStatus: ContractStatus.NONE,
-        slaLevel: SLALevel.STANDARD
-      },
-      scope: 'Instalação simples.',
-      report: '',
-      observations: '',
-      checklist: standardChecklist,
-      images: [],
-    });
-  }
-
   return orders;
 };
+
+// --- NEW MOCK DATA GENERATORS ---
+
+export const MOCK_VEHICLES: Vehicle[] = [
+    { id: 'v1', plate: 'AA-22-BB', brand: 'Renault', model: 'Kangoo', status: 'active', mileage: 125000, lastService: '2023-12-01', assignedTo: 'João Silva' },
+    { id: 'v2', plate: 'CC-33-DD', brand: 'Peugeot', model: 'Partner', status: 'maintenance', mileage: 180000, lastService: '2024-01-15' },
+    { id: 'v3', plate: 'EE-44-FF', brand: 'Toyota', model: 'Proace', status: 'active', mileage: 45000, lastService: '2023-11-20', assignedTo: 'Ana Santos' },
+    { id: 'v4', plate: 'GG-55-HH', brand: 'Mercedes', model: 'Vito', status: 'active', mileage: 210000, lastService: '2024-02-01' },
+];
+
+export const MOCK_INVOICES: Invoice[] = [
+    { id: 'inv1', number: 'FT 2024/001', customerName: 'Cliente Lisboa 1 Lda', amount: 450.00, date: '2024-02-01', dueDate: '2024-03-01', status: InvoiceStatus.SENT, items: 3 },
+    { id: 'inv2', number: 'FT 2024/002', customerName: 'Restaurante O Pátio', amount: 120.50, date: '2024-02-05', dueDate: '2024-02-20', status: InvoiceStatus.PAID, items: 1 },
+    { id: 'inv3', number: 'FT 2024/003', customerName: 'Condomínio Azul', amount: 890.00, date: '2024-01-15', dueDate: '2024-02-15', status: InvoiceStatus.OVERDUE, items: 5 },
+];
+
+export const MOCK_EMPLOYEES: Employee[] = [
+    { id: 'emp1', name: 'João Silva', role: 'Técnico Sénior', department: 'Manutenção', email: 'joao@empresa.com', phone: '910000001', status: 'Active', joinDate: '2020-05-01' },
+    { id: 'emp2', name: 'Ana Santos', role: 'Técnica', department: 'Instalação', email: 'ana@empresa.com', phone: '910000002', status: 'Active', joinDate: '2021-02-15' },
+    { id: 'emp3', name: 'Carlos Gestor', role: 'Gestor de Operações', department: 'Administração', email: 'carlos@empresa.com', phone: '910000003', status: 'Active', joinDate: '2019-01-10' },
+];

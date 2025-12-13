@@ -10,6 +10,58 @@ interface CalendarViewProps {
 
 type CalendarMode = 'month' | 'week' | 'day';
 
+// Helper moved outside
+const getStatusColor = (status: ServiceStatus) => {
+    switch (status) {
+      case ServiceStatus.DONE: return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+      case ServiceStatus.PENDING: return 'bg-amber-100 text-amber-800 border-amber-200';
+      case ServiceStatus.IN_PROGRESS: return 'bg-blue-100 text-blue-800 border-blue-200';
+      case ServiceStatus.CANCELED: return 'bg-red-100 text-red-800 border-red-200';
+      default: return 'bg-slate-100 text-slate-800 border-slate-200';
+    }
+};
+
+// Component moved outside
+interface TimeGridEventProps {
+    order: ServiceOrder;
+    onSelectOrder: (order: ServiceOrder) => void;
+}
+
+const TimeGridEvent: React.FC<TimeGridEventProps> = ({ order, onSelectOrder }) => {
+    const start = new Date(order.startDate);
+    const end = new Date(order.endDate);
+    
+    // Simple positioning calculation (assuming 08:00 start for grid)
+    const startHour = start.getHours();
+    const startMin = start.getMinutes();
+    const durationMin = (end.getTime() - start.getTime()) / (1000 * 60);
+    
+    // Grid starts at 7:00 AM. Each hour is 60px height.
+    const topOffset = ((startHour - 7) * 60) + startMin;
+    const height = Math.max(durationMin, 30); // Minimum 30 mins visual height
+
+    if (startHour < 7 || startHour > 20) return null; // Hide out of bounds for simplified view
+
+    return (
+      <button
+        onClick={(e) => { e.stopPropagation(); onSelectOrder(order); }}
+        style={{ top: `${topOffset}px`, height: `${height}px` }}
+        className={`absolute inset-x-1 rounded-md border text-left p-2 shadow-sm text-xs overflow-hidden transition-all hover:z-20 hover:shadow-md hover:scale-[1.02] flex flex-col gap-0.5 z-10 ${getStatusColor(order.status)}`}
+      >
+        <div className="flex justify-between items-start">
+             <span className="font-bold truncate">{order.customer.name}</span>
+             {order.priority === Priority.CRITICAL && <span className="w-2 h-2 rounded-full bg-red-500 shrink-0 animate-pulse"/>}
+        </div>
+        <div className="flex items-center gap-1 opacity-75">
+             <MapPin size={10} /> <span className="truncate">{order.customer.city}</span>
+        </div>
+        <div className="mt-auto pt-1 font-mono text-[10px] opacity-80 border-t border-current/20">
+            {start.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - {end.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+        </div>
+      </button>
+    );
+};
+
 export const CalendarView: React.FC<CalendarViewProps> = ({ orders, onSelectOrder }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<CalendarMode>('month');
@@ -64,17 +116,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ orders, onSelectOrde
   // --- Data Filtering ---
   const getOrdersForDay = (date: Date) => {
     return orders.filter(o => isSameDay(new Date(o.startDate), date));
-  };
-
-  // --- Styling Helpers ---
-  const getStatusColor = (status: ServiceStatus) => {
-    switch (status) {
-      case ServiceStatus.DONE: return 'bg-emerald-100 text-emerald-800 border-emerald-200';
-      case ServiceStatus.PENDING: return 'bg-amber-100 text-amber-800 border-amber-200';
-      case ServiceStatus.IN_PROGRESS: return 'bg-blue-100 text-blue-800 border-blue-200';
-      case ServiceStatus.CANCELED: return 'bg-red-100 text-red-800 border-red-200';
-      default: return 'bg-slate-100 text-slate-800 border-slate-200';
-    }
   };
 
   const monthNames = [
@@ -144,41 +185,6 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ orders, onSelectOrde
     );
   };
 
-  const TimeGridEvent = ({ order }: { order: ServiceOrder }) => {
-    const start = new Date(order.startDate);
-    const end = new Date(order.endDate);
-    
-    // Simple positioning calculation (assuming 08:00 start for grid)
-    const startHour = start.getHours();
-    const startMin = start.getMinutes();
-    const durationMin = (end.getTime() - start.getTime()) / (1000 * 60);
-    
-    // Grid starts at 7:00 AM. Each hour is 60px height.
-    const topOffset = ((startHour - 7) * 60) + startMin;
-    const height = Math.max(durationMin, 30); // Minimum 30 mins visual height
-
-    if (startHour < 7 || startHour > 20) return null; // Hide out of bounds for simplified view
-
-    return (
-      <button
-        onClick={(e) => { e.stopPropagation(); onSelectOrder(order); }}
-        style={{ top: `${topOffset}px`, height: `${height}px` }}
-        className={`absolute inset-x-1 rounded-md border text-left p-2 shadow-sm text-xs overflow-hidden transition-all hover:z-20 hover:shadow-md hover:scale-[1.02] flex flex-col gap-0.5 z-10 ${getStatusColor(order.status)}`}
-      >
-        <div className="flex justify-between items-start">
-             <span className="font-bold truncate">{order.customer.name}</span>
-             {order.priority === Priority.CRITICAL && <span className="w-2 h-2 rounded-full bg-red-500 shrink-0 animate-pulse"/>}
-        </div>
-        <div className="flex items-center gap-1 opacity-75">
-             <MapPin size={10} /> <span className="truncate">{order.customer.city}</span>
-        </div>
-        <div className="mt-auto pt-1 font-mono text-[10px] opacity-80 border-t border-current/20">
-            {start.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - {end.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-        </div>
-      </button>
-    );
-  };
-
   const WeekView = () => {
     const startOfWeek = getStartOfWeek(currentDate);
     const weekDays = Array.from({ length: 7 }).map((_, i) => addDays(startOfWeek, i));
@@ -224,7 +230,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ orders, onSelectOrde
                       
                       {/* Events */}
                       {getOrdersForDay(day).map(order => (
-                          <TimeGridEvent key={order.id} order={order} />
+                          <TimeGridEvent key={order.id} order={order} onSelectOrder={onSelectOrder} />
                       ))}
                   </div>
               ))}
@@ -264,7 +270,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ orders, onSelectOrde
                           <div key={h} className="h-[60px] border-b border-slate-100"></div>
                       ))}
                       {dayOrders.map(order => (
-                          <TimeGridEvent key={order.id} order={order} />
+                          <TimeGridEvent key={order.id} order={order} onSelectOrder={onSelectOrder} />
                       ))}
                   </div>
              </div>

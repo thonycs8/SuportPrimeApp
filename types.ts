@@ -14,16 +14,15 @@ export enum Priority {
   CRITICAL = 'Crítica'
 }
 
-// Roles defined in the prompt
 export enum UserRole {
-  SUPER_ADMIN = 'Super Admin', // New Root Level Access
+  SUPER_ADMIN = 'Super Admin',
   ADMIN = 'Administrador', 
   DIRECTOR = 'Diretor',
-  MANAGER = 'Gestor', // Organization Owner
+  MANAGER = 'Gestor',
   SUPERVISOR = 'Supervisor',
   TECHNICIAN = 'Técnico',
   ASSISTANT = 'Técnico Assistente',
-  CLIENT = 'Cliente' // End customer viewing their own data
+  CLIENT = 'Cliente'
 }
 
 export enum PlanType {
@@ -55,7 +54,7 @@ export interface Organization {
   status: OrganizationStatus;
   suspensionReason?: SuspensionReason;
   joinedAt?: string;
-  trialEndsAt?: string; // New field for Trial Logic
+  trialEndsAt?: string;
 }
 
 export interface User {
@@ -67,7 +66,6 @@ export interface User {
   avatar?: string;
 }
 
-// PREMIUM: Contract & SLA Types
 export enum ContractStatus {
   ACTIVE = 'Ativo',
   EXPIRED = 'Expirado',
@@ -82,7 +80,7 @@ export enum SLALevel {
 }
 
 export interface Customer {
-  id?: string; // Added ID for linking
+  id?: string;
   name: string;
   nif: string;
   address: string;
@@ -90,11 +88,10 @@ export interface Customer {
   city: string; 
   contacts: string;
   email?: string;
-  // Premium CRM Fields
   contractStatus?: ContractStatus;
   slaLevel?: SLALevel;
   tags?: string[];
-  ltv?: number; // Lifetime Value
+  ltv?: number;
 }
 
 export interface ServiceImage {
@@ -110,7 +107,6 @@ export interface StatusHistoryEntry {
   updatedBy: string;
 }
 
-// PREMIUM: Audit Log
 export interface AuditLogEntry {
   id: string;
   action: string;
@@ -120,7 +116,6 @@ export interface AuditLogEntry {
   userName: string;
 }
 
-// PREMIUM: Checklist
 export interface ChecklistItem {
   id: string;
   label: string;
@@ -129,52 +124,32 @@ export interface ChecklistItem {
 
 export interface ServiceOrder {
   id: string;
-  organizationId: string; // Tenant Isolation
+  organizationId: string;
   processNumber: string;
   priority: Priority;
-  
-  // Team
   technicianName: string;
   assistantTechnicianName?: string;
-  
   status: ServiceStatus;
   statusHistory: StatusHistoryEntry[]; 
-  auditLog?: AuditLogEntry[]; // Premium traceability
-  
+  auditLog?: AuditLogEntry[];
   channel: string;
-  
-  // Scheduled Time
   startDate: string;
   endDate: string;
-
-  // Real Execution Time (New)
   actualStartTime?: string;
   actualEndTime?: string;
-  
   vehicle: string;
-  
-  // Customer Data
   customer: Customer;
-
-  // Work Details
   scope: string; 
   report: string; 
   observations: string;
-  
-  // Premium: Checklist
   checklist?: ChecklistItem[];
-
-  // Media & Signatures
   images: ServiceImage[];
   technicianSignature?: string; 
   customerSignature?: string;
-  
-  // Quality Metrics (New)
-  npsScore?: number; // 0 to 10
+  npsScore?: number;
 }
 
 // --- CRM & Support Types ---
-
 export enum LeadStatus {
   NEW = 'Novo',
   CONTACTED = 'Contactado',
@@ -189,17 +164,15 @@ export interface Lead {
   companyName: string;
   email: string;
   phone: string;
-  nif?: string; // Added NIF
+  nif?: string;
   status: LeadStatus;
   notes: string;
   createdAt: string;
-  potentialValue?: number; // For pipeline forecast
-  probability?: number;    // 0-100%
+  potentialValue?: number;
+  probability?: number;
   lastContact?: string;
-  
-  // Commercial Proposal Details
   proposedPlan?: PlanType;
-  userCount?: number; // 5, 10, 25, 50
+  userCount?: number;
 }
 
 export enum TicketStatus {
@@ -228,4 +201,84 @@ export interface SupportTicket {
   messages: TicketMessage[];
 }
 
-export type ViewMode = 'landing' | 'login' | 'public-tracking' | 'dashboard' | 'tech-dashboard' | 'calendar' | 'list' | 'edit' | 'read-pdf' | 'settings' | 'admin-panel' | 'support';
+// --- INTEGRATIONS & WEBHOOKS ---
+export enum WebhookEvent {
+  ORDER_CREATED = 'order.created',
+  ORDER_UPDATED = 'order.updated',
+  ORDER_COMPLETED = 'order.completed',
+  LEAD_CREATED = 'lead.created'
+}
+
+export interface Webhook {
+  id: string;
+  url: string;
+  events: WebhookEvent[];
+  isActive: boolean;
+  secret: string;
+  lastTriggered?: string;
+  failureCount: number;
+}
+
+// --- NEW MODULES TYPES ---
+
+// Fleet & Assets
+export interface Vehicle {
+  id: string;
+  plate: string;
+  model: string;
+  brand: string;
+  status: 'active' | 'maintenance' | 'inactive';
+  lastService: string;
+  mileage: number;
+  assignedTo?: string;
+}
+
+export interface Asset {
+  id: string;
+  name: string;
+  serialNumber: string;
+  category: string;
+  status: 'available' | 'in_use' | 'repair';
+  purchaseDate: string;
+}
+
+// Financial
+export enum InvoiceStatus {
+  DRAFT = 'Rascunho',
+  SENT = 'Enviada',
+  PAID = 'Paga',
+  OVERDUE = 'Vencida'
+}
+
+export interface Invoice {
+  id: string;
+  number: string;
+  customerName: string;
+  amount: number;
+  date: string;
+  dueDate: string;
+  status: InvoiceStatus;
+  items: number;
+}
+
+// HR
+export interface Employee {
+  id: string;
+  name: string;
+  role: string;
+  department: string;
+  email: string;
+  phone: string;
+  status: 'Active' | 'On Leave' | 'Terminated';
+  joinDate: string;
+}
+
+// Extended ViewMode for Navigation
+export type ViewMode = 
+  | 'landing' | 'login' | 'public-tracking' 
+  | 'dashboard' | 'tech-dashboard' | 'calendar' | 'admin-panel'
+  | 'crm' | 'support' | 'settings'
+  | 'list' | 'edit' | 'read-pdf' // Operational
+  | 'fleet-list' | 'assets-list' // Resources
+  | 'finance-invoices' | 'finance-expenses' // Financial
+  | 'hr-employees' | 'hr-payroll'; // HR
